@@ -1,3 +1,5 @@
+# make_embeddings_ada_002.py
+# src\make_embeddings_ada_002.py
 from openai import OpenAI
 import re
 import os
@@ -28,6 +30,15 @@ test_cases = [case.strip() for case in test_cases if case.strip()]
 
 # Function to get embeddings from OpenAI
 def get_openai_embeddings(texts):
+    """
+    Generates embeddings for a list of texts using OpenAI's text-embedding-ada-002 model.
+
+    Args:
+        texts (list of str): A list of text strings for which embeddings are to be generated.
+
+    Returns:
+        list of list of float: A list where each element is a list of floats representing the embedding of the corresponding input text.
+    """
     embeddings = []
     for text in texts:
         response = client.embeddings.create(input=text, model="text-embedding-ada-002")

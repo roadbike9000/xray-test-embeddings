@@ -1,3 +1,5 @@
+# make_embeddings_sentence_transformers.py
+# src\make_embeddings_sentence_transformers.py
 from openai import OpenAI
 import re
 import os

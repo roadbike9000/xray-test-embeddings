@@ -5,6 +5,11 @@ from collections import Counter
 import numpy as np
 from sklearn.cluster import DBSCAN
 from sklearn.metrics.pairwise import cosine_similarity
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.manifold import TSNE
+import umap
+
 
 '''
 Run DBSCAN on the Generated Embeddings
@@ -17,6 +22,8 @@ embeddings_sentence_transformer), you can apply DBSCAN to cluster them.
 # Function to apply DBSCAN with cosine distance
 def dbscan_clustering(embeddings, eps=0.5, min_samples=5):
     cosine_sim = cosine_similarity(embeddings)
+    # Clip cosine similarity values to avoid numerical errors
+    cosine_sim = np.clip(cosine_sim, 0, 1)
     distance = 1 - cosine_sim
     dbscan = DBSCAN(eps=eps, min_samples=min_samples, metric='precomputed')
     labels = dbscan.fit_predict(distance)
@@ -166,10 +173,84 @@ The key metrics for comparison between the two models:
 Number of clusters: Check how many clusters each model generated.
 Noise points: See how many points were labeled as noise by each model.
 Cluster sizes: Compare the distribution of cluster sizes for each model.
-Intra-cluster similarity: Analyze how similar the points within each cluster are.
+Intra-cluster similarity: Analyze how similar the points in each cluster are.
 Inter-cluster distance: Compare how distinct the clusters are from each other.
 '''
 
 # TODO: Interpret the results
+'''
+Part 1: Interpreting the Results
+You can compare the clustering performance of the models using the following
+criteria:
 
-# TODO: Visualize the clusters
+Number of Clusters: A larger or smaller number of clusters isn’t necessarily
+better—it depends on how naturally the test cases are grouped. If one model
+has fewer clusters, it might be over-grouping; if it has many clusters, it
+might be splitting them too finely.
+
+Noise Points: Noise points are test cases that don't fit well into any cluster.
+The model with fewer noise points might be better at identifying coherent
+clusters, but too few noise points might suggest that the model is forcing
+some points into clusters where they don’t belong.
+
+Intra-cluster Similarity: Higher intra-cluster similarity means that the
+points within each cluster are more alike. Look for higher average
+intra-cluster similarity across clusters as a sign of a better model.
+
+Inter-cluster Distance: Higher inter-cluster distances indicate that clusters
+are more distinct from each other. The model that has larger distances between
+clusters may better capture the semantic differences between test cases.
+
+Key Questions for Interpretation:
+Cluster Purity: Which model has higher intra-cluster similarity, meaning the
+clusters contain more semantically similar test cases?
+
+Cluster Separation: Which model has higher inter-cluster distances, meaning
+the clusters are more distinct?
+'''
+# Visualize the clusters
+# Dimensionality reduction to 2D for visualization using UMAP or TSNE
+
+
+def reduce_dimensions(embeddings, method="umap"):
+    if method == "umap":
+        # original n_neighbors=15, min_dist=0.1
+        reducer = umap.UMAP(n_neighbors=15, min_dist=0.1)
+    else:  # Use t-SNE if preferred
+        reducer = TSNE(n_components=2, random_state=42)
+    
+    reduced = reducer.fit_transform(embeddings)
+    return reduced
+
+
+# Function to plot the clusters in 2D space
+def plot_clusters(embeddings_2d, labels, title="Cluster Visualization"):
+    # Define colors for clusters and noise points
+    unique_labels = np.unique(labels)
+    palette = sns.color_palette("hsv", len(unique_labels) - 1)  # For clusters
+    palette.append((0, 0, 0))  # Black color for noise points (-1)
+
+    plt.figure(figsize=(10, 7))
+    for cluster_label in unique_labels:
+        if cluster_label == -1:  # Noise points
+            color = "black"
+            label = "Noise"
+        else:
+            color = palette[cluster_label]
+            label = f"Cluster {cluster_label}"
+
+        cluster_points = embeddings_2d[labels == cluster_label]
+        plt.scatter(cluster_points[:, 0], cluster_points[:, 1], color=color, label=label, alpha=0.6, s=50)
+
+    plt.title(title)
+    plt.legend()
+    plt.show()
+
+
+# Reduce dimensions for OpenAI embeddings
+reduced_ada = reduce_dimensions(embeddings_ada, method="umap")
+plot_clusters(reduced_ada, labels_ada, title="Clusters from OpenAI Model (text-embedding-ada-002)")
+
+# Reduce dimensions for Sentence-Transformer embeddings
+# reduced_st = reduce_dimensions(embeddings_sentence_transformer, method="umap")
+# plot_clusters(reduced_st, labels_sentence_transformer, title="Clusters from Sentence-Transformer Model (all-MiniLM-L6-v2)")
